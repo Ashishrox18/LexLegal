@@ -12,7 +12,7 @@ interface CompareResultsProps {
   data: CompareResponse;
 }
 
-export const CompareResults: React.FC<CompareResultsProps> = ({ data }) => {
+const CompareResultsInner: React.FC<CompareResultsProps> = ({ data }) => {
   const router = useRouter();
   const { reset } = useCompareStore();
 
@@ -178,3 +178,5 @@ export const CompareResults: React.FC<CompareResultsProps> = ({ data }) => {
     </div>
   );
 };
+
+export const CompareResults = React.memo(CompareResultsInner);

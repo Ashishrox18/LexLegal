@@ -4,10 +4,15 @@ import React from 'react';
 import { useCompareStore } from '@/hooks/useCompareStore';
 import { DocumentUpload } from '@/components/ui/DocumentUpload';
 import { LoadingAnalysis } from '@/components/ui/LoadingAnalysis';
-import { CompareResults } from '@/components/features/CompareResults';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Storage } from '@/lib/storage';
 import { AlertCircle, Scale } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const CompareResults = dynamic(
+  () => import('@/components/features/CompareResults').then((m) => ({ default: m.CompareResults })),
+  { loading: () => <LoadingAnalysis /> }
+);
 
 export default function ComparePage() {
   const {

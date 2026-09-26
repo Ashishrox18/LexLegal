@@ -4,11 +4,16 @@ import React, { useState, useEffect } from 'react';
 import { useDecodeStore } from '@/hooks/useDecodeStore';
 import { DocumentUpload } from '@/components/ui/DocumentUpload';
 import { LoadingAnalysis } from '@/components/ui/LoadingAnalysis';
-import { PrepareResults } from '@/components/features/PrepareResults';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { PrepareResponse } from '@/schemas/ai-responses';
 import { Storage } from '@/lib/storage';
 import { AlertCircle, FileCheck } from 'lucide-react';
+import dynamic from 'next/dynamic';
+
+const PrepareResults = dynamic(
+  () => import('@/components/features/PrepareResults').then((m) => ({ default: m.PrepareResults })),
+  { loading: () => <LoadingAnalysis /> }
+);
 
 export default function PreparePage() {
   const { results: decodeResults, documentText: decodeDocText } = useDecodeStore();

@@ -3,26 +3,16 @@ import { callGeminiStructured } from '@/lib/ai/gemini';
 import { buildComparePrompt } from '@/lib/ai/prompts';
 import { CompareRequestSchema, CompareResponseSchema } from '@/schemas/ai-responses';
 import { sanitizeDocument } from '@/lib/sanitize';
+import { isRateLimited } from '@/lib/rateLimiter';
+import { compareCache, buildCacheKey } from '@/lib/cache';
 import { ZodError } from 'zod';
 
-const rateLimits = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(userId);
-  if (!entry || now > entry.resetAt) {
-    rateLimits.set(userId, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-  if (entry.count >= 10) return true;
-  entry.count++;
-  return false;
-}
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    
+
     const parseResult = CompareRequestSchema.safeParse(body);
     if (!parseResult.success) {
       return NextResponse.json(
@@ -32,7 +22,7 @@ export async function POST(req: Request) {
     }
     const { documentAText, documentBText, userId } = parseResult.data;
 
-    if (isRateLimited(userId)) {
+    if (isRateLimited(`compare:${userId}`, 10)) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a minute.' },
         { status: 429 }
@@ -42,12 +32,22 @@ export async function POST(req: Request) {
     const sanitizedA = sanitizeDocument(documentAText);
     const sanitizedB = sanitizeDocument(documentBText);
 
+    // Cache keyed on both documents — order-insensitive would need sorting,
+    // but directional comparison is order-sensitive so key as-is.
+    const cacheKey = buildCacheKey([sanitizedA, sanitizedB]);
+    const cached = compareCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, { headers: { 'X-Cache': 'HIT' } });
+    }
+
     const result = await callGeminiStructured(
       buildComparePrompt(sanitizedA, sanitizedB),
       CompareResponseSchema
     );
 
-    return NextResponse.json(result);
+    compareCache.set(cacheKey, result);
+
+    return NextResponse.json(result, { headers: { 'X-Cache': 'MISS' } });
 
   } catch (error) {
     if (error instanceof ZodError) {

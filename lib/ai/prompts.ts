@@ -1,4 +1,14 @@
-import { INDIA_LEGAL_CONTEXT } from '@/lib/legalContext';
+// INDIA_LEGAL_CONTEXT import intentionally removed — context is now inlined
+// compactly in the prompt to reduce token usage per request.
+
+const COMPACT_INDIA_CONTEXT = `
+Key Indian laws by doc type:
+- Rental: Transfer of Property Act 1882; deposit ≤3 months; >11mo must register; 30d eviction notice.
+- Employment: Industrial Disputes Act 1947; PF mandatory 20+ employees; gratuity after 5yrs; non-compete weakly enforced.
+- NDA: Indian Contract Act 1872 §27; 2-3yr duration enforceable; define confidential info specifically.
+- Legal Notice: CPC 1908; respond in 30 days in writing; ignoring is admissible against you.
+- Loan: Contract Act 1872 + RBI Guidelines; disclose interest clearly; register collateral.
+`.trim();
 
 export const buildDecodePrompt = (documentText: string): string => `
 You are LexAI's legal analysis engine — an expert in Indian law helping everyday citizens understand legal documents.
@@ -8,8 +18,8 @@ DOCUMENT TO ANALYZE:
 ${documentText}
 """
 
-INDIA LEGAL CONTEXT (use this for accurate, jurisdiction-specific analysis):
-${JSON.stringify(INDIA_LEGAL_CONTEXT, null, 2)}
+INDIA LEGAL CONTEXT:
+${COMPACT_INDIA_CONTEXT}
 
 TASK: Analyze this document thoroughly. Return ONLY a valid JSON object. No markdown. No explanation. No code fences. Just the raw JSON.
 

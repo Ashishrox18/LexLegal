@@ -3,26 +3,16 @@ import { callGeminiStructured } from '@/lib/ai/gemini';
 import { buildDecodePrompt } from '@/lib/ai/prompts';
 import { DecodeRequestSchema, DecodeResponseSchema } from '@/schemas/ai-responses';
 import { sanitizeDocument } from '@/lib/sanitize';
+import { isRateLimited } from '@/lib/rateLimiter';
+import { decodeCache, buildCacheKey } from '@/lib/cache';
 import { ZodError } from 'zod';
 
-const rateLimits = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(userId);
-  if (!entry || now > entry.resetAt) {
-    rateLimits.set(userId, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-  if (entry.count >= 10) return true;
-  entry.count++;
-  return false;
-}
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
     const body = await req.json();
-    
+
     // Validate request body
     const parseResult = DecodeRequestSchema.safeParse(body);
     if (!parseResult.success) {
@@ -32,8 +22,8 @@ export async function POST(req: Request) {
       );
     }
     const { documentText, userId } = parseResult.data;
-    
-    if (isRateLimited(userId)) {
+
+    if (isRateLimited(`decode:${userId}`, 10)) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a minute.' },
         { status: 429 }
@@ -42,14 +32,28 @@ export async function POST(req: Request) {
 
     // Sanitize before sending to AI
     const sanitized = sanitizeDocument(documentText);
-    
+
+    // Check cache first — avoid redundant LLM calls for same document
+    const cacheKey = buildCacheKey([sanitized]);
+    const cached = decodeCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, {
+        headers: { 'X-Cache': 'HIT' },
+      });
+    }
+
     // Call Groq AI with structured output validation
     const result = await callGeminiStructured(
       buildDecodePrompt(sanitized),
       DecodeResponseSchema
     );
 
-    return NextResponse.json(result);
+    // Store in cache for subsequent identical requests
+    decodeCache.set(cacheKey, result);
+
+    return NextResponse.json(result, {
+      headers: { 'X-Cache': 'MISS' },
+    });
 
   } catch (error) {
     if (error instanceof ZodError) {

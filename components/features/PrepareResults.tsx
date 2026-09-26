@@ -20,7 +20,7 @@ interface PrepareResultsProps {
   data: PrepareResponse;
 }
 
-export const PrepareResults: React.FC<PrepareResultsProps> = ({ data }) => {
+const PrepareResultsInner: React.FC<PrepareResultsProps> = ({ data }) => {
   const [copied, setCopied] = useState(false);
   const [checklist, setChecklist] = useState(data?.checklistItems || []);
 
@@ -349,3 +349,5 @@ export const PrepareResults: React.FC<PrepareResultsProps> = ({ data }) => {
     </div>
   );
 };
+
+export const PrepareResults = React.memo(PrepareResultsInner);

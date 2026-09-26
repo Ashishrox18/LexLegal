@@ -1,13 +1,19 @@
 'use client';
 
 import React from 'react';
+import dynamic from 'next/dynamic';
 import { useDecodeStore } from '@/hooks/useDecodeStore';
 import { DocumentUpload } from '@/components/ui/DocumentUpload';
 import { LoadingAnalysis } from '@/components/ui/LoadingAnalysis';
-import { DecodeResults } from '@/components/features/DecodeResults';
 import { ErrorBoundary } from '@/components/ui/ErrorBoundary';
 import { Storage } from '@/lib/storage';
 import { AlertCircle } from 'lucide-react';
+
+// Lazy-load the heavy results component — only needed after analysis completes
+const DecodeResults = dynamic(
+  () => import('@/components/features/DecodeResults').then((m) => ({ default: m.DecodeResults })),
+  { loading: () => <LoadingAnalysis /> }
+);
 
 export default function DecodePage() {
   const {

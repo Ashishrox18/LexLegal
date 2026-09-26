@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useMemo } from 'react';
 import { useRouter } from 'next/navigation';
 import { DecodeResponse } from '@/schemas/ai-responses';
 import { RiskGauge } from '../ui/RiskGauge';
@@ -14,7 +14,7 @@ interface DecodeResultsProps {
   data: DecodeResponse;
 }
 
-export const DecodeResults: React.FC<DecodeResultsProps> = ({ data }) => {
+const DecodeResultsInner: React.FC<DecodeResultsProps> = ({ data }) => {
   const router = useRouter();
   const { documentText, reset } = useDecodeStore();
 
@@ -28,10 +28,10 @@ export const DecodeResults: React.FC<DecodeResultsProps> = ({ data }) => {
   const missingClauses = data?.missingClauses || [];
   const keyDates = data?.keyDates || [];
 
-  const filteredClauses = clauses.filter((clause) => {
-    if (filterFlag === 'all') return true;
-    return clause.flag === filterFlag;
-  });
+  const filteredClauses = useMemo(
+    () => filterFlag === 'all' ? clauses : clauses.filter((c) => c.flag === filterFlag),
+    [clauses, filterFlag]
+  );
 
   const handlePrepareClick = () => {
     router.push('/prepare');
@@ -289,3 +289,5 @@ export const DecodeResults: React.FC<DecodeResultsProps> = ({ data }) => {
     </div>
   );
 };
+
+export const DecodeResults = React.memo(DecodeResultsInner);

@@ -3,28 +3,18 @@ import { callGeminiStructured } from '@/lib/ai/gemini';
 import { buildAskPrompt } from '@/lib/ai/prompts';
 import { AskRequestSchema, AskResponseSchema } from '@/schemas/ai-responses';
 import { sanitizeDocument, sanitizeQuestion } from '@/lib/sanitize';
+import { isRateLimited } from '@/lib/rateLimiter';
+import { askCache, buildCacheKey } from '@/lib/cache';
 import { ZodError } from 'zod';
 
-const rateLimits = new Map<string, { count: number; resetAt: number }>();
-
-function isRateLimited(userId: string): boolean {
-  const now = Date.now();
-  const entry = rateLimits.get(userId);
-  if (!entry || now > entry.resetAt) {
-    rateLimits.set(userId, { count: 1, resetAt: now + 60_000 });
-    return false;
-  }
-  if (entry.count >= 15) return true; // 15 Q&A req/min per user
-  entry.count++;
-  return false;
-}
+export const runtime = 'nodejs';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
     const { question, documentText, userId } = AskRequestSchema.parse(body);
 
-    if (isRateLimited(userId)) {
+    if (isRateLimited(`ask:${userId}`, 15)) {
       return NextResponse.json(
         { error: 'Too many requests. Please wait a minute.' },
         { status: 429 }
@@ -34,12 +24,21 @@ export async function POST(req: NextRequest) {
     const sanitizedQ = sanitizeQuestion(question);
     const sanitizedDoc = sanitizeDocument(documentText);
 
+    // Cache Q&A results — same question on same doc gives same answer
+    const cacheKey = buildCacheKey([sanitizedQ, sanitizedDoc]);
+    const cached = askCache.get(cacheKey);
+    if (cached) {
+      return NextResponse.json(cached, { headers: { 'X-Cache': 'HIT' } });
+    }
+
     const result = await callGeminiStructured(
       buildAskPrompt(sanitizedQ, sanitizedDoc),
       AskResponseSchema
     );
 
-    return NextResponse.json(result);
+    askCache.set(cacheKey, result);
+
+    return NextResponse.json(result, { headers: { 'X-Cache': 'MISS' } });
 
   } catch (error) {
     if (error instanceof ZodError) {
