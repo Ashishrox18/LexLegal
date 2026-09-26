@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import dynamic from 'next/dynamic';
 import { useDecodeStore } from '@/hooks/useDecodeStore';
 import { DocumentUpload } from '@/components/ui/DocumentUpload';
@@ -27,7 +27,7 @@ export default function DecodePage() {
     setResults,
   } = useDecodeStore();
 
-  const handleAnalyze = async (text: string) => {
+  const handleAnalyze = useCallback(async (text: string) => {
     setDocumentText(text);
     setIsAnalyzing(true);
     setError(null);
@@ -63,7 +63,7 @@ export default function DecodePage() {
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [setDocumentText, setIsAnalyzing, setError, setResults]);
 
   return (
     <ErrorBoundary>
@@ -90,15 +90,21 @@ export default function DecodePage() {
         )}
 
         {/* State Machine Views */}
-        {isAnalyzing ? (
-          <LoadingAnalysis />
-        ) : results ? (
-          <DecodeResults data={results} />
-        ) : (
-          <div className="max-w-3xl mx-auto">
-            <DocumentUpload onDocumentSubmit={handleAnalyze} isLoading={isAnalyzing} />
-          </div>
-        )}
+        <div
+          aria-live="polite"
+          aria-atomic="false"
+          aria-label="Analysis results"
+        >
+          {isAnalyzing ? (
+            <LoadingAnalysis />
+          ) : results ? (
+            <DecodeResults data={results} />
+          ) : (
+            <div className="max-w-3xl mx-auto">
+              <DocumentUpload onDocumentSubmit={handleAnalyze} isLoading={isAnalyzing} />
+            </div>
+          )}
+        </div>
       </div>
     </ErrorBoundary>
   );

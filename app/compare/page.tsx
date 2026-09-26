@@ -1,6 +1,6 @@
 'use client';
 
-import React from 'react';
+import React, { useCallback } from 'react';
 import { useCompareStore } from '@/hooks/useCompareStore';
 import { DocumentUpload } from '@/components/ui/DocumentUpload';
 import { LoadingAnalysis } from '@/components/ui/LoadingAnalysis';
@@ -28,7 +28,7 @@ export default function ComparePage() {
     setResults,
   } = useCompareStore();
 
-  const handleCompare = async () => {
+  const handleCompare = useCallback(async () => {
     if (docAText.trim().length < 50 || docBText.trim().length < 50) {
       setError('Both Document A and Document B must contain at least 50 characters.');
       return;
@@ -68,7 +68,7 @@ export default function ComparePage() {
     } finally {
       setIsComparing(false);
     }
-  };
+  }, [docAText, docBText, setIsComparing, setError, setResults]);
 
   const isFormValid = docAText.trim().length >= 50 && docBText.trim().length >= 50;
 
@@ -96,55 +96,57 @@ export default function ComparePage() {
         )}
 
         {/* State Machine */}
-        {isComparing ? (
-          <LoadingAnalysis />
-        ) : results ? (
-          <CompareResults data={results} />
-        ) : (
-          <div className="space-y-8">
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              {/* Document A Upload */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-base font-bold text-text-primary">Document A (Original / Version 1)</h3>
-                  <span className="text-xs text-text-muted">{docAText.length} chars</span>
+        <div aria-live="polite" aria-atomic="false" aria-label="Comparison results">
+          {isComparing ? (
+            <LoadingAnalysis />
+          ) : results ? (
+            <CompareResults data={results} />
+          ) : (
+            <div className="space-y-8">
+              <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                {/* Document A Upload */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-base font-bold text-text-primary">Document A (Original / Version 1)</h3>
+                    <span className="text-xs text-text-muted">{docAText.length} chars</span>
+                  </div>
+                  <DocumentUpload
+                    onDocumentSubmit={(text) => setDocAText(text)}
+                    buttonLabel="Save Document A"
+                  />
                 </div>
-                <DocumentUpload
-                  onDocumentSubmit={(text) => setDocAText(text)}
-                  buttonLabel="Save Document A"
-                />
+
+                {/* Document B Upload */}
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between px-1">
+                    <h3 className="text-base font-bold text-text-primary">Document B (Updated / Version 2)</h3>
+                    <span className="text-xs text-text-muted">{docBText.length} chars</span>
+                  </div>
+                  <DocumentUpload
+                    onDocumentSubmit={(text) => setDocBText(text)}
+                    buttonLabel="Save Document B"
+                  />
+                </div>
               </div>
 
-              {/* Document B Upload */}
-              <div className="space-y-3">
-                <div className="flex items-center justify-between px-1">
-                  <h3 className="text-base font-bold text-text-primary">Document B (Updated / Version 2)</h3>
-                  <span className="text-xs text-text-muted">{docBText.length} chars</span>
-                </div>
-                <DocumentUpload
-                  onDocumentSubmit={(text) => setDocBText(text)}
-                  buttonLabel="Save Document B"
-                />
+              {/* Main Action Bar */}
+              <div className="flex justify-center pt-4">
+                <button
+                  onClick={handleCompare}
+                  disabled={!isFormValid || isComparing}
+                  className={`px-8 py-4 rounded-xl text-base font-bold flex items-center gap-3 transition-all shadow-xl ${
+                    isFormValid && !isComparing
+                      ? 'bg-warning hover:bg-warning/90 text-white shadow-warning/20 cursor-pointer scale-105'
+                      : 'bg-border text-text-muted cursor-not-allowed opacity-60'
+                  }`}
+                >
+                  <Scale className="w-5 h-5" />
+                  <span>Compare Both Documents</span>
+                </button>
               </div>
             </div>
-
-            {/* Main Action Bar */}
-            <div className="flex justify-center pt-4">
-              <button
-                onClick={handleCompare}
-                disabled={!isFormValid || isComparing}
-                className={`px-8 py-4 rounded-xl text-base font-bold flex items-center gap-3 transition-all shadow-xl ${
-                  isFormValid && !isComparing
-                    ? 'bg-warning hover:bg-warning/90 text-white shadow-warning/20 cursor-pointer scale-105'
-                    : 'bg-border text-text-muted cursor-not-allowed opacity-60'
-                }`}
-              >
-                <Scale className="w-5 h-5" />
-                <span>Compare Both Documents</span>
-              </button>
-            </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
     </ErrorBoundary>
   );
