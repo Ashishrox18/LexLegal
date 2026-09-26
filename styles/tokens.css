@@ -1,0 +1,22 @@
+/* styles/tokens.css */
+:root {
+  --bg-base: #0F0F13;
+  --bg-surface: #16161D;
+  --bg-card: #1E1E2A;
+  --border: #2D2D3D;
+  --border-subtle: #232330;
+  --primary: #4F6EF7;
+  --primary-hover: #6B85FF;
+  --primary-muted: rgba(79, 110, 247, 0.12);
+  --safe: #10B981;
+  --safe-muted: rgba(16, 185, 129, 0.12);
+  --warning: #F59E0B;
+  --warning-muted: rgba(245, 158, 11, 0.12);
+  --danger: #EF4444;
+  --danger-muted: rgba(239, 68, 68, 0.12);
+  --text-primary: #F0F0FF;
+  --text-secondary: #B0B0CC;
+  --text-muted: #8888AA;
+  --radius: 10px;
+  --radius-lg: 16px;
+}
